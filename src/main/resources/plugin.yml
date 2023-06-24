@@ -1,0 +1,4 @@
+name: BukkitBinLogger
+version: '${project.version}'
+main: dev.hilligans.bukkitbinlogger.BukkitBinLogger
+api-version: 1.19
