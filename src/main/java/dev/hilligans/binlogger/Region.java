@@ -50,6 +50,20 @@ public class Region {
         this.byteBuffer = ByteBuffer.allocate(bufferSize);
     }
 
+    public Region(Region region, int size, PlayerTable playerTable) {
+        this.x = region.x;
+        this.z = region.z;
+        this.worldName = region.worldName;
+        this.date = Instant.now().atZone(ZoneId.of("UTC")).toLocalDate().toString();
+        this.startTime = System.currentTimeMillis();
+        this.timeHeaderOffset = TIME_HEADER_OFFSET;
+        this.protocolVersion = region.protocolVersion;
+        this.actionChecksum = region.actionChecksum;
+        this.bufferSize = size;
+        this.byteBuffer = ByteBuffer.allocate(bufferSize);
+        this.playerTable = playerTable;
+    }
+
     public Region(ByteBuffer byteBuffer) {
         readHeader(byteBuffer);
         System.out.println("New region x " + x + " z " + z + " worldName " + worldName);
@@ -107,6 +121,10 @@ public class Region {
         return timeHeaderOffset;
     }
 
+    public long getSizeInBytes() {
+        return timeHeaderOffset * 16L + bufferPointer * 16L;
+    }
+
     public void write(Action action, short owner, int x, int y, int z, long time, long data) {
         long convertedTime = (time - lastTime) * 20 / 1000;
         if(bufferPointer % timeHeaderOffset == 0 || convertedTime > (1 << 16)) {
@@ -116,7 +134,16 @@ public class Region {
         write((long)action.getID() << 6 * 8 | ((long)(owner & 0xFFFF) << 4 * 8) | (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL)), (long)((short)convertedTime) << 6 * 8 | data);
     }
 
-    public synchronized void write(long long1, long long2) {
+    public void write(long long1, long time, long data) {
+        long convertedTime = (time - lastTime) * 20 / 1000;
+        if(bufferPointer % timeHeaderOffset == 0 || convertedTime > (1 << 16)) {
+            writeTimestamp(time);
+            convertedTime = (time - lastTime) * 1000 / 20;
+        }
+        write(long1, (long)((short)convertedTime) << 6 * 8 | data);
+    }
+
+    private synchronized void write(long long1, long long2) {
         byteBuffer.putLong(bufferPointer * 16, long1);
         byteBuffer.putLong(bufferPointer * 16 + 8, long2);
         bufferPointer++;

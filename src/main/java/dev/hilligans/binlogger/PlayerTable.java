@@ -10,12 +10,22 @@ import java.util.UUID;
 
 public class PlayerTable {
 
-    public ArrayList<UUID> players = new ArrayList<>();
+    public ArrayList<UUID> players;
     public Object2ShortOpenHashMap<UUID> map = new Object2ShortOpenHashMap<>();
     boolean fullyInMemory;
+    boolean optimizedTable;
 
     public PlayerTable() {
+        players = new ArrayList<>();
         this.fullyInMemory = true;
+    }
+
+    public PlayerTable(ArrayList<UUID> players, boolean optimizedTable) {
+        this.players = players;
+        this.optimizedTable = optimizedTable;
+        for(short x = 0; x < players.size(); x++) {
+            map.put(players.get(x), x);
+        }
     }
 
     public PlayerTable(String path, boolean writing) {
@@ -33,7 +43,19 @@ public class PlayerTable {
     }
 
     public void load(ByteBuffer buffer) {
+        buffer.getLong();
+        buffer.getLong();
+        int size = buffer.getInt();
+        buffer.getInt();
+        buffer.getLong();
 
+        players = new ArrayList<>(size);
+
+        for(short x = 0; x < size; x++) {
+            UUID uuid = new UUID(buffer.getLong(), buffer.getLong());
+            players.set(x, uuid);
+            map.put(uuid, x);
+        }
     }
 
     public void save(ByteBuffer buffer) {
@@ -44,12 +66,10 @@ public class PlayerTable {
         buffer.putLong(0);
 
         for(UUID player : players) {
-            buffer.putLong(player.getLeastSignificantBits());
             buffer.putLong(player.getMostSignificantBits());
+            buffer.putLong(player.getLeastSignificantBits());
         }
     }
-
-
 
     public UUID getUUID(short player) {
         return players.get(player);
