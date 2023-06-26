@@ -4,12 +4,10 @@ import java.nio.ByteBuffer;
 
 public class Queries {
 
-    public static int queryForAction(Region region, Action action, int[] data, int dataOffset, int limit) {
+    public static int queryForAction(Region region, short actionID, int[] data, int dataOffset, int limit) {
         ByteBuffer byteBuffer = region.getBufferForReading();
         int bufferPointer = region.getBufferPointer();
         int timeHeaderOffset = region.getTimeHeaderOffset();
-
-        short actionID = action.getID();
 
         int offset = 0;
         for(int i = 0; i < bufferPointer; i++) {
@@ -50,12 +48,12 @@ public class Queries {
         return offset;
     }
 
-    public static int queryForActionOwner(Region region, Action action, short owner, int[] data, int dataOffset, int limit) {
+    public static int queryForActionOwner(Region region, short action, short owner, int[] data, int dataOffset, int limit) {
         ByteBuffer byteBuffer = region.getBufferForReading();
         int bufferPointer = region.getBufferPointer();
         int timeHeaderOffset = region.getTimeHeaderOffset();
 
-        int val = ((action.getID() << 16) | owner);
+        int val = ((action << 16) | owner);
         int offset = 0;
         for(int i = 0; i < bufferPointer; i++) {
             if(i % timeHeaderOffset == 0) {
@@ -97,13 +95,13 @@ public class Queries {
     }
 
 
-    public static int queryForActionPosition(Region region, Action action, int x, int y, int z, int[] data, int dataOffset, int limit) {
+    public static int queryForActionPosition(Region region, short action, int x, int y, int z, int[] data, int dataOffset, int limit) {
         ByteBuffer byteBuffer = region.getBufferForReading();
         int bufferPointer = region.getBufferPointer();
         int timeHeaderOffset = region.getTimeHeaderOffset();
 
         int pos = (int) (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL));
-        long val = (((long)action.getID() & 0xFFFF) << 48) | pos;
+        long val = (((long)action & 0xFFFF) << 48) | pos;
         long mask = ~(0xFFL << 32);
         int offset = 0;
         for(int i = 0; i < bufferPointer; i++) {
@@ -147,13 +145,13 @@ public class Queries {
         return offset;
     }
 
-    public static int queryForActionUserPosition(Region region, Action action, short user, int x, int y, int z, int[] data, int dataOffset, int limit) {
+    public static int queryForActionUserPosition(Region region, short action, short user, int x, int y, int z, int[] data, int dataOffset, int limit) {
         ByteBuffer byteBuffer = region.getBufferForReading();
         int bufferPointer = region.getBufferPointer();
         int timeHeaderOffset = region.getTimeHeaderOffset();
 
         int pos = (int) (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL));
-        long val = ((((long)action.getID()) & 0xFFFF) << 48) | (((long)user & 0xFFFF) << 32) | pos;
+        long val = ((((long)action) & 0xFFFF) << 48) | (((long)user & 0xFFFF) << 32) | pos;
         int offset = 0;
         for(int i = 0; i < bufferPointer; i++) {
             if(i % timeHeaderOffset == 0) {
@@ -200,12 +198,37 @@ public class Queries {
         return x;
     }
 
-    public static int queryForActionTime(Region region, Action action, long starTime, long endTime, int[] data, int dataOffset, int limit) {
+    public static int queryForTime(Region region, long startTime, long endTime, int[] data, int dataOffset, int limit) {
         ByteBuffer byteBuffer = region.getBufferForReading();
         int bufferPointer = region.getBufferPointer();
         int timeHeaderOffset = region.getTimeHeaderOffset();
 
-        short actionID = action.getID();
+        int i = getStartPosition(region, startTime);
+        int maxTickTime = 0;
+        int offset = 0;
+        for(; i < bufferPointer; i++) {
+            if (i % timeHeaderOffset == 0) {
+                maxTickTime = calculateTickMaxTimestamp(byteBuffer.getLong(i * 16 + 8), endTime);
+                continue;
+            }
+            if (byteBuffer.getShort(i * 16 + 8) < maxTickTime) {
+                data[offset + dataOffset] = i;
+                offset++;
+                limit--;
+                if (offset + dataOffset == data.length || limit == 0) {
+                    return offset;
+                }
+            }
+        }
+        return offset;
+    }
+
+    public static int queryForActionTime(Region region, short action, long starTime, long endTime, int[] data, int dataOffset, int limit) {
+        ByteBuffer byteBuffer = region.getBufferForReading();
+        int bufferPointer = region.getBufferPointer();
+        int timeHeaderOffset = region.getTimeHeaderOffset();
+
+        short actionID = action;
         int i = getStartPosition(region, starTime);
         int maxTickTime = 0;
         int offset = 0;
@@ -255,12 +278,12 @@ public class Queries {
         return offset;
     }
 
-    public static int queryForActionOwnerTime(Region region, Action action, short owner, long starTime, long endTime, int[] data, int dataOffset, int limit) {
+    public static int queryForActionOwnerTime(Region region, short action, short owner, long starTime, long endTime, int[] data, int dataOffset, int limit) {
         ByteBuffer byteBuffer = region.getBufferForReading();
         int bufferPointer = region.getBufferPointer();
         int timeHeaderOffset = region.getTimeHeaderOffset();
 
-        int val = ((action.getID() << 16) | owner);
+        int val = ((action << 16) | owner);
 
         int i = getStartPosition(region, starTime);
         int maxTickTime = 0;
@@ -314,13 +337,13 @@ public class Queries {
     }
 
 
-    public static int queryForActionPositionTime(Region region, Action action, int x, int y, int z, long starTime, long endTime, int[] data, int dataOffset, int limit) {
+    public static int queryForActionPositionTime(Region region, short action, int x, int y, int z, long starTime, long endTime, int[] data, int dataOffset, int limit) {
         ByteBuffer byteBuffer = region.getBufferForReading();
         int bufferPointer = region.getBufferPointer();
         int timeHeaderOffset = region.getTimeHeaderOffset();
 
         int pos = (int) (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL));
-        long val = (((long)action.getID() & 0xFFFF) << 48) | pos;
+        long val = (((long)action & 0xFFFF) << 48) | pos;
         long mask = ~(0xFFL << 32);
 
         int i = getStartPosition(region, starTime);
@@ -376,13 +399,13 @@ public class Queries {
         return offset;
     }
 
-    public static int queryForActionUserPositionTime(Region region, Action action, short user, int x, int y, int z, long starTime, long endTime, int[] data, int dataOffset, int limit) {
+    public static int queryForActionUserPositionTime(Region region, short action, short user, int x, int y, int z, long starTime, long endTime, int[] data, int dataOffset, int limit) {
         ByteBuffer byteBuffer = region.getBufferForReading();
         int bufferPointer = region.getBufferPointer();
         int timeHeaderOffset = region.getTimeHeaderOffset();
 
         int pos = (int) (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL));
-        long val = ((((long)action.getID()) & 0xFFFF) << 48) | (((long)user & 0xFFFF) << 32) | pos;
+        long val = ((((long)action) & 0xFFFF) << 48) | (((long)user & 0xFFFF) << 32) | pos;
 
         int i = getStartPosition(region, starTime);
         int maxTickTime = 0;

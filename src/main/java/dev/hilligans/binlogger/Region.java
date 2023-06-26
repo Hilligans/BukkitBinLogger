@@ -149,6 +149,34 @@ public class Region {
         bufferPointer++;
     }
 
+    public int query(Query query, int[] data, int dataOffset, int limit) {
+        if(query.getProperty(Query.PLAYER)) {
+            query.withUser(playerTable.getPlayer(query.player));
+        }
+        if(query.getProperty(Query.POSITION)) {
+            //check if the position is in the region
+        }
+
+        return switch (query.properties & 0b11111) {
+            case Query.ACTION -> Queries.queryForAction(this, query.action, data, dataOffset, limit);
+            case Query.USER -> Queries.queryForOwner(this, query.user, data, dataOffset, limit);
+            case Query.ACTION | Query.USER -> Queries.queryForActionOwner(this, query.action, query.user, data, dataOffset, limit);
+            case Query.POSITION -> Queries.queryForPosition(this, query.x, query.y, query.z, data, dataOffset, limit);
+            case Query.ACTION | Query.POSITION -> Queries.queryForActionPosition(this, query.action, query.x, query.y, query.z, data, dataOffset, limit);
+            case Query.USER | Query.POSITION -> Queries.queryForUserPosition(this, query.user, query.x, query.y, query.z, data, dataOffset, limit);
+            case Query.ACTION | Query.USER | Query.POSITION -> Queries.queryForActionUserPosition(this, query.action, query.user, query.x, query.y, query.z, data, dataOffset, limit);
+            case Query.TIME -> Queries.queryForTime(this, query.startTime, query.endTime, data, dataOffset, limit);
+            case Query.ACTION | Query.TIME -> Queries.queryForActionTime(this, query.action, query.startTime, query.endTime, data, dataOffset, limit);
+            case Query.USER | Query.TIME -> Queries.queryForOwnerTime(this, query.user, query.startTime, query.endTime, data, dataOffset, limit);
+            case Query.ACTION | Query.USER | Query.TIME -> Queries.queryForActionOwnerTime(this, query.action, query.user, query.startTime, query.endTime, data, dataOffset, limit);
+            case Query.POSITION | Query.TIME -> Queries.queryForPositionTime(this, query.x, query.y, query.z, query.startTime, query.endTime, data, dataOffset, limit);
+            case Query.ACTION | Query.POSITION | Query.TIME -> Queries.queryForActionPositionTime(this, query.action, query.x, query.y, query.z, query.startTime, query.endTime, data, dataOffset, limit);
+            case Query.USER | Query.POSITION | Query.TIME -> Queries.queryForUserPositionTime(this, query.user, query.x, query.y, query.z, query.startTime, query.endTime, data, dataOffset, limit);
+            case Query.ACTION | Query.USER | Query.POSITION | Query.TIME -> Queries.queryForActionUserPositionTime(this, query.action, query.user, query.x, query.y, query.z, query.startTime, query.endTime, data, dataOffset, limit);
+            default -> 0;
+        };
+    }
+
     public int query(Action action_, Short owner_, Integer x_, Integer y_, Integer z_, Long timeStart_, Long timeEnd_, int[] data, int dataOffset) {
         short action = action_ == null ? 0 : action_.getID();
         short owner = owner_ == null ? 0 : owner_;
