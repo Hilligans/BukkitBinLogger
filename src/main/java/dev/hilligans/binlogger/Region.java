@@ -27,6 +27,7 @@ public class Region {
     public int count = 0;
     public long startTime;
     public long endTime;
+    public boolean writing = true;
 
     public long actionChecksum;
 

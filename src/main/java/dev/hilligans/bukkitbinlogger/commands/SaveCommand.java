@@ -1,6 +1,7 @@
 package dev.hilligans.bukkitbinlogger.commands;
 
 import dev.hilligans.binlogger.Region;
+import dev.hilligans.binlogger.RegionContainer;
 import dev.hilligans.bukkitbinlogger.BukkitBinLogger;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -14,7 +15,7 @@ public class SaveCommand extends Command {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {
-        for(Region region : BukkitBinLogger.database.regionMap.values()) {
+        for(RegionContainer region : BukkitBinLogger.database.regionMap.values()) {
             region.save();
         }
         return false;

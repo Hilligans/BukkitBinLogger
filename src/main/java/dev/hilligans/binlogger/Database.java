@@ -20,8 +20,8 @@ import static dev.hilligans.bukkitbinlogger.BukkitBinLogger.database;
 
 public abstract class Database {
 
-    public final Long2ObjectOpenHashMap<Region> regionMap = new Long2ObjectOpenHashMap<>();
-    public final Object2ObjectOpenHashMap<String, Long2ObjectOpenHashMap<Region>> map = new Object2ObjectOpenHashMap<>();
+    public final Long2ObjectOpenHashMap<RegionContainer> regionMap = new Long2ObjectOpenHashMap<>();
+    public final Object2ObjectOpenHashMap<String, Long2ObjectOpenHashMap<RegionContainer>> map = new Object2ObjectOpenHashMap<>();
     public final ActionRegistry actionRegistry = new ActionRegistry();
 
     public ArrayList<DatabaseEntry> parseQuery(String[] query, int limit, String world) {
@@ -58,6 +58,17 @@ public abstract class Database {
         return builder.toString();
     }
 
+    public QueryResult parseQuery(Query query) {
+
+        if(query.getProperty(Query.POSITION)) {
+
+        } else {
+
+        }
+
+        return null;
+    }
+
     public RollBack getRollback(String[] query, World world) {
         ArrayList<DatabaseEntry> entries = parseQuery(query, 1, world.getWorld().getName());
         return new RollBack(world, entries);
@@ -76,19 +87,14 @@ public abstract class Database {
 
     public @NotNull Region getOrCreateRegion(int x, int z, String world) {
         synchronized (regionMap) {
-            long key = ((long) x << 32L) | ((long) z) & 0xFFFFFFFFL ;
-            Region region = regionMap.get(key);
-            if(region == null) {
-                region = new Region(x, z, world, getProtocolVersion(), getActionChecksum());
-            }
-            regionMap.put(key, region);
-            return region;
+            long key = ((long) x << 32L) | ((long) z) & 0xFFFFFFFFL;
+            return regionMap.get(key).getOrCreateRegion(() -> new Region(x, z, world, getProtocolVersion(), getActionChecksum()));
         }
     }
 
     public void putRegion(int x, int z, String world, Region region) {
         long key = ((long) x << 32L) | ((long) z) & 0xFFFFFFFFL;
-        regionMap.put(key, region);
+        regionMap.computeIfAbsent(key, (a) -> new RegionContainer(x, z, world)).addRegion(region);
     }
 
     public void loadActiveTablesToMemory(String world) {
