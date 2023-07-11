@@ -433,6 +433,29 @@ public class Queries {
 
 //    public static final long DATA_MASK = 0xFFFFFFFFFFFFL;
 
+    public static int queryForData(Region region, long dataIn, final long dataMask, int[] data, int dataOffset, int limit) {
+        ByteBuffer byteBuffer = region.getBufferForReading();
+        int bufferPointer = region.getBufferPointer();
+        int timeHeaderOffset = region.getTimeHeaderOffset();
+
+        int offset = 0;
+        for(int i = 0; i < bufferPointer; i++) {
+            if (i % timeHeaderOffset == 0) {
+                continue;
+            }
+            if ((byteBuffer.getLong(i * 16 + 8) & dataMask) == dataIn) {
+                data[offset + dataOffset] = i;
+                offset++;
+                limit--;
+                if (offset + dataOffset == data.length || limit == 0) {
+                    return offset;
+                }
+            }
+        }
+        return offset;
+    }
+
+
     public static int queryForActionData(Region region, short actionID, long dataIn, final long dataMask, int[] data, int dataOffset, int limit) {
         ByteBuffer byteBuffer = region.getBufferForReading();
         int bufferPointer = region.getBufferPointer();

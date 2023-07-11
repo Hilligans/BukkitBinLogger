@@ -174,6 +174,7 @@ public class Region {
             case Query.ACTION | Query.POSITION | Query.TIME -> Queries.queryForActionPositionTime(this, query.action, query.x, query.y, query.z, query.startTime, query.endTime, data, dataOffset, limit);
             case Query.USER | Query.POSITION | Query.TIME -> Queries.queryForUserPositionTime(this, query.user, query.x, query.y, query.z, query.startTime, query.endTime, data, dataOffset, limit);
             case Query.ACTION | Query.USER | Query.POSITION | Query.TIME -> Queries.queryForActionUserPositionTime(this, query.action, query.user, query.x, query.y, query.z, query.startTime, query.endTime, data, dataOffset, limit);
+            case Query.DATA -> Queries.queryForData(this, query.data, query.dataMask, data, dataOffset, limit);
             case Query.ACTION | Query.DATA -> Queries.queryForActionData(this, query.action, query.data, query.dataMask, data, dataOffset, limit);
             case Query.USER | Query.DATA -> Queries.queryForOwnerData(this, query.user, query.data, query.dataMask, data, dataOffset, limit);
             case Query.ACTION | Query.USER | Query.DATA -> Queries.queryForActionOwnerData(this, query.action, query.user, query.data, query.dataMask, data, dataOffset, limit);
