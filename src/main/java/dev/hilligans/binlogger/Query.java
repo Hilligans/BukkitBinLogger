@@ -66,7 +66,12 @@ public class Query {
     public Query withData(long data, long dataMask) {
         this.data = data;
         this.dataMask = dataMask;
+        setProperty(DATA);
         return this;
+    }
+
+    public Query withData(long data) {
+        return withData(data, 0xFFFFFFFFFFFFL);
     }
 
     public Query withRadius(int radius) {
