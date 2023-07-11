@@ -174,6 +174,22 @@ public class Region {
             case Query.ACTION | Query.POSITION | Query.TIME -> Queries.queryForActionPositionTime(this, query.action, query.x, query.y, query.z, query.startTime, query.endTime, data, dataOffset, limit);
             case Query.USER | Query.POSITION | Query.TIME -> Queries.queryForUserPositionTime(this, query.user, query.x, query.y, query.z, query.startTime, query.endTime, data, dataOffset, limit);
             case Query.ACTION | Query.USER | Query.POSITION | Query.TIME -> Queries.queryForActionUserPositionTime(this, query.action, query.user, query.x, query.y, query.z, query.startTime, query.endTime, data, dataOffset, limit);
+            case Query.ACTION | Query.DATA -> Queries.queryForActionData(this, query.action, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.USER | Query.DATA -> Queries.queryForOwnerData(this, query.user, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.ACTION | Query.USER | Query.DATA -> Queries.queryForActionOwnerData(this, query.action, query.user, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.POSITION | Query.DATA -> Queries.queryForPositionData(this, query.x, query.y, query.z, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.ACTION | Query.POSITION | Query.DATA -> Queries.queryForActionPositionData(this, query.action, query.x, query.y, query.z, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.USER | Query.POSITION | Query.DATA -> Queries.queryForUserPositionData(this, query.user, query.x, query.y, query.z, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.ACTION | Query.USER | Query.POSITION | Query.DATA -> Queries.queryForActionUserPositionData(this, query.action, query.user, query.x, query.y, query.z, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.TIME | Query.DATA -> Queries.queryForTimeData(this, query.startTime, query.endTime, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.ACTION | Query.TIME | Query.DATA -> Queries.queryForActionTimeData(this, query.action, query.startTime, query.endTime, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.USER | Query.TIME | Query.DATA -> Queries.queryForOwnerTimeData(this, query.user, query.startTime, query.endTime, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.ACTION | Query.USER | Query.TIME | Query.DATA -> Queries.queryForActionOwnerTimeData(this, query.action, query.user, query.startTime, query.endTime, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.POSITION | Query.TIME | Query.DATA -> Queries.queryForPositionTimeData(this, query.x, query.y, query.z, query.startTime, query.endTime, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.ACTION | Query.POSITION | Query.TIME | Query.DATA -> Queries.queryForActionPositionTimeData(this, query.action, query.x, query.y, query.z, query.startTime, query.endTime, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.USER | Query.POSITION | Query.TIME | Query.DATA -> Queries.queryForUserPositionTimeData(this, query.user, query.x, query.y, query.z, query.startTime, query.endTime, query.data, query.dataMask, data, dataOffset, limit);
+            case Query.ACTION | Query.USER | Query.POSITION | Query.TIME | Query.DATA -> Queries.queryForActionUserPositionTimeData(this, query.action, query.user, query.x, query.y, query.z, query.startTime, query.endTime, query.data, query.dataMask, data, dataOffset, limit);
+
             default -> 0;
         };
     }
@@ -191,7 +207,6 @@ public class Region {
 
         if(timeStart_ != null) {
             while(bufferPointer > x) {
-
                 if ((byteBuffer.getLong(x * 16) & 0xFFFF000000000000L) == (1L << 48L)) {
                     if(byteBuffer.getLong(x * 16 + 8) > startTime) {
                         x -= timeHeaderOffset;
@@ -254,6 +269,10 @@ public class Region {
     public long getTimestamp(int index) {
         index -= index % timeHeaderOffset;
         return byteBuffer.getLong(index * 16 + 8);
+    }
+
+    public long getTime(int index) {
+        return calculateTime(byteBuffer.getShort(index * 16 + 8), getTimestamp(index));
     }
 
     public Database.DatabaseEntry getEntry(int index) {

@@ -16,6 +16,8 @@ public class Query {
 
     public long startTime;
     public long endTime;
+    public long data;
+    public long dataMask;
 
     public int minX;
     public int minY;
@@ -24,6 +26,9 @@ public class Query {
     public int maxX;
     public int maxY;
     public int maxZ;
+
+
+    public int perRegionQuery = 50;
 
     public Query withAction(Action action) {
         this.action = action.getID();
@@ -58,6 +63,12 @@ public class Query {
         return this;
     }
 
+    public Query withData(long data, long dataMask) {
+        this.data = data;
+        this.dataMask = dataMask;
+        return this;
+    }
+
     public Query withRadius(int radius) {
         if(!getProperty(POSITION)) {
             throw new RuntimeException("Query position must be set first to set a radius");
@@ -88,7 +99,9 @@ public class Query {
     public static final int USER = 1 << 1;
     public static final int POSITION = 1 << 2;
     public static final int TIME = 1 << 3;
-    public static final int BOUNDING_BOX = 1 << 4;
-    public static final int PLAYER = 1 << 5;
+    public static final int DATA = 1 << 4;
+    public static final int BOUNDING_BOX = 1 << 5;
+    public static final int PLAYER = 1 << 6;
+
 }
 
