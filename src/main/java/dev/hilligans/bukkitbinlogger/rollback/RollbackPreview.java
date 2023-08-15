@@ -49,6 +49,7 @@ public class RollbackPreview {
     public static void sendCleared(RollBack.SubChunk subChunk) {
         //ClientboundLevelChunkPacketData p = new ClientboundLevelChunkPacketData((Chunk) ((CraftChunk) subChunk.world.getWorld().getChunkAt(subChunk.x, subChunk.z)).getHandle(ChunkStatus.o));
         ChunkProviderServer s = subChunk.world.getMinecraftWorld().k();
+
         ClientboundLevelChunkWithLightPacket pp = new ClientboundLevelChunkWithLightPacket((Chunk) ((CraftChunk) subChunk.world.getWorld().getChunkAt(subChunk.x, subChunk.z)).getHandle(ChunkStatus.o), s.a(), null, null, false);
     //    ChunkSection section = ((CraftChunk) subChunk.world.getWorld().getChunkAt(subChunk.x, subChunk.z)).getHandle(ChunkStatus.o).d()[subChunk.y];
       //  PacketPlayOutMultiBlockChange packet = new PacketPlayOutMultiBlockChange(subChunk.pos, subChunk.positions, section, true);

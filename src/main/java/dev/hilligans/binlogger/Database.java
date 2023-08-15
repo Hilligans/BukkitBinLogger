@@ -1,9 +1,11 @@
 package dev.hilligans.binlogger;
 
+import dev.hilligans.binlogger.util.TimeUtil;
 import dev.hilligans.bukkitbinlogger.rollback.RollBack;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.world.level.World;
+import org.apache.commons.lang3.function.TriFunction;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.bukkit.Material;
 import org.bukkit.block.BlockState;
@@ -15,12 +17,14 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.LongFunction;
 
 import static dev.hilligans.bukkitbinlogger.BukkitBinLogger.database;
 
 public abstract class Database {
 
-    public final Long2ObjectOpenHashMap<RegionContainer> regionMap = new Long2ObjectOpenHashMap<>();
+    //public final Long2ObjectOpenHashMap<RegionContainer> regionMap = new Long2ObjectOpenHashMap<>();
     public final Object2ObjectOpenHashMap<String, Long2ObjectOpenHashMap<RegionContainer>> map = new Object2ObjectOpenHashMap<>();
     public final ActionRegistry actionRegistry = new ActionRegistry();
 
@@ -51,19 +55,31 @@ public abstract class Database {
 
         long time = System.currentTimeMillis();
         StringBuilder builder = new StringBuilder();
-        builder.append("showing ").append(entries.size()).append(" results for ").append("X:").append(x).append(" Y:").append(y).append(" Z:").append(z).append("\n");
-        for(int a = 0; a < Math.min(5, entries.size()); a++) {
-            builder.append(entries.get(a).getFormattedString(this, time)).append("\n");
+        int shownCount = 0;
+        int visibleCount = 0;
+        for (DatabaseEntry entry : entries) {
+            if (entry.isVisible()) {
+                visibleCount++;
+                if (shownCount <= 5) {
+                    shownCount++;
+                    builder.append(entry.getFormattedString(this, time)).append("\n");
+                }
+            }
         }
-        return builder.toString();
+        return "showing " + visibleCount + " results for " + "X:" + x + " Y:" + y + " Z:" + z + "\n" + builder;
     }
 
     public QueryResult parseQuery(Query query) {
-
+        QueryResult queryResult = new QueryResult(query);
         if(query.getProperty(Query.POSITION)) {
 
         } else {
-
+           // int capacity = Math.min(regionMap.size() * query.perRegionQuery, 100000);
+            int offset = 0;
+           // int[] vals = new int[capacity];
+           // for(RegionContainer regionContainer : regionMap.values()) {
+           //     offset += regionContainer.query(query, queryResult, vals, offset, query.perRegionQuery);
+           // }
         }
 
         return null;
@@ -74,27 +90,72 @@ public abstract class Database {
         return new RollBack(world, entries);
     }
 
-    public void logAction(Action action, User user, int x, int y, int z, String world, long time, long data) {
+    public void logAction(Action action, User user, int x, int y, int z, String world, long time, long data, boolean hidden) {
         Region region = getOrCreateRegion(x >> 11, z >> 11, world);
-        region.write(action, user.getID(), x, y, z, time, data);
+        region.write(action, user.getID(), x, y, z, time, data, hidden);
     }
 
-    public void logAction(Action action, UUID player, int x, int y, int z, String world, long time, long data) {
+    public void logAction(Action action, UUID player, int x, int y, int z, String world, long time, long data, boolean hidden) {
         Region region = getOrCreateRegion(x >> 11, z >> 11, world);
         short pid = region.getPlayerTable().getPlayer(player);
-        region.write(action, pid, x, y, z, time, data);
+        region.write(action, pid, x, y, z, time, data, hidden);
+    }
+
+    public int logData(int x, int y, int z, String world, NBTTagReaderWriter readerWriter) {
+        Region region = getOrCreateRegion(x >> 11, z >> 11, world);
+        return region.getNBTTable().writeNBT(readerWriter);
+    }
+
+    public void saveWorld(String name) {
+        Long2ObjectOpenHashMap<RegionContainer> containers;
+        synchronized (map) {
+            containers = map.get(name);
+        }
+        if (containers != null) {
+            synchronized (containers) {
+                for (RegionContainer regionContainer : containers.values()) {
+                    regionContainer.saveHeader();
+                }
+            }
+        }
+    }
+
+    public void saveAll() {
+        synchronized (map) {
+            for(Long2ObjectOpenHashMap<RegionContainer> container : map.values()) {
+                synchronized (container) {
+                    for (RegionContainer regionContainer : container.values()) {
+                        regionContainer.saveHeader();
+                    }
+                }
+            }
+        }
+    }
+
+    private Long2ObjectOpenHashMap<RegionContainer> getContainerMap(String world) {
+        synchronized (map) {
+            return map.computeIfAbsent(world, s -> new Long2ObjectOpenHashMap<>());
+        }
     }
 
     public @NotNull Region getOrCreateRegion(int x, int z, String world) {
-        synchronized (regionMap) {
+        Long2ObjectOpenHashMap<RegionContainer> container = getContainerMap(world);
+        synchronized (container) {
             long key = ((long) x << 32L) | ((long) z) & 0xFFFFFFFFL;
-            return regionMap.get(key).getOrCreateRegion(() -> new Region(x, z, world, getProtocolVersion(), getActionChecksum()));
+            return container.computeIfAbsent(key, value -> new RegionContainer(x, z, world)).getOrCreateRegion(() -> new Region(x, z, world, getProtocolVersion(), getActionChecksum()));
         }
+    }
+
+    public @NotNull Region getOrCreateRegion(int blockX, int blockY, int blockZ, String world) {
+        return getOrCreateRegion(blockX >> 11, blockZ >> 11, world);
     }
 
     public void putRegion(int x, int z, String world, Region region) {
         long key = ((long) x << 32L) | ((long) z) & 0xFFFFFFFFL;
-        regionMap.computeIfAbsent(key, (a) -> new RegionContainer(x, z, world)).addRegion(region);
+        Long2ObjectOpenHashMap<RegionContainer> container = getContainerMap(world);
+        synchronized (container) {
+            container.computeIfAbsent(key, (a) -> new RegionContainer(x, z, world)).addRegion(region);
+        }
     }
 
     public void loadActiveTablesToMemory(String world) {
@@ -152,8 +213,12 @@ public abstract class Database {
             this.data2 = data2;
         }
 
+        public boolean isVisible() {
+            return data1 >>> 63 == 0;
+        }
+
         public int getAction() {
-            return (short) (data1 >>> 48L);
+            return (short) (data1 >>> 48L) & 0x7FFF;
         }
 
         public short getOwner() {
@@ -185,17 +250,17 @@ public abstract class Database {
         }
 
         public String getFormattedString(Database database, long time) {
-
             StringBuilder builder = new StringBuilder();
-            builder.append(DurationFormatUtils.formatDurationWords(time - Region.calculateTime(getTime(), timestamp), true, true));
+            builder.append(TimeUtil.getTimeSince(Region.calculateTime(getTime(), timestamp)/1000, time/1000));
+            //builder.append(DurationFormatUtils.formatDurationWords(time - Region.calculateTime(getTime(), timestamp), true, true));
 
             Action action = database.actionRegistry.getAction(getAction());
             String user;
             short u = getOwner();
-            if((u & (short)(1 << 15)) == 0) {
+            if ((u & (short) (1 << 15)) == 0) {
                 user = database.getPlayerName(region.getPlayerTable().getUUID(u));
             } else {
-                if((u & (short)(1 << 14)) == 0) {
+                if ((u & (short) (1 << 14)) == 0) {
                     u = (short) (u ^ (0b10 << 14));
                     user = database.getEntityName(u);
                 } else {
@@ -206,11 +271,12 @@ public abstract class Database {
 
             builder.append(" ago ").append(action.icon).append(" ").append(user).append(" ").append(action.word);
 
-            BiFunction<Long, Database, String> biFunction = action.parser;
-            if(biFunction != null) {
-                builder.append(" ").append(biFunction.apply(getData(), database).toLowerCase());
+            TriFunction<Long, Database, Region, String> biFunction = action.parser;
+            if (biFunction != null) {
+                builder.append(" ").append(biFunction.apply(getData(), database, region).toLowerCase());
             } else {
-                builder.append(" no parser found");
+
+                builder.append(" no parser found for action ").append(action.actionName);
             }
             return builder.toString();
         }
@@ -229,5 +295,5 @@ public abstract class Database {
 
     }
 
-    public static final BiFunction<Long, Database, String> BLOCK_PARSER = (aLong, database) -> database.getBlockName((short) (aLong >>> 32));
+    public static final TriFunction<Long, Database, Region, String> BLOCK_PARSER = (aLong, database, region) -> database.getBlockName((short) (aLong >>> 32));
 }

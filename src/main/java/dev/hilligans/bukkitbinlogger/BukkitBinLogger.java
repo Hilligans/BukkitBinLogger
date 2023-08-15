@@ -1,6 +1,9 @@
 package dev.hilligans.bukkitbinlogger;
 
 import dev.hilligans.bukkitbinlogger.commands.*;
+import dev.hilligans.bukkitbinlogger.listeners.BlockEventListener;
+import dev.hilligans.bukkitbinlogger.listeners.InventoryEventListener;
+import dev.hilligans.bukkitbinlogger.listeners.WorldListener;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandMap;
 import org.bukkit.craftbukkit.v1_19_R3.CraftServer;
@@ -25,12 +28,12 @@ public final class BukkitBinLogger extends JavaPlugin {
         //Main.main(null);
         PluginManager manager = Bukkit.getPluginManager();
 
-        manager.registerEvents(new EventListener(), this);
+        manager.registerEvents(new BlockEventListener(), this);
+        manager.registerEvents(new InventoryEventListener(), this);
+        manager.registerEvents(new WorldListener(), this);
 
         commandMap.register("binlogger", new LookupCommand());
         commandMap.register("binlogger", new InspectorCommand());
-        commandMap.register("binlogger", new SaveCommand());
-        commandMap.register("binlogger", new LoadCommand());
         commandMap.register("binlogger", new RollbackCommand());
 
         database.registerAllContent();
@@ -38,6 +41,7 @@ public final class BukkitBinLogger extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        database.saveAll();
         // Plugin shutdown logic
     }
 }

@@ -1,0 +1,3 @@
+name: untitled2
+version: '${project.version}'
+main: dev.hilligans.untitled2.Untitled2

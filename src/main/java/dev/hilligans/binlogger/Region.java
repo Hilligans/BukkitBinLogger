@@ -16,7 +16,11 @@ public class Region {
     ByteBuffer byteBuffer;
     int bufferPointer = 0;
     public int bufferSize = 0;
-    public PlayerTable playerTable = new PlayerTable();
+    public PlayerTable playerTable;
+    public NBTTable nbtTable;
+    public RandomAccessFile aFile;
+    public FileChannel fileChannel;
+
 
     public int x;
     public int z;
@@ -47,8 +51,33 @@ public class Region {
         this.timeHeaderOffset = TIME_HEADER_OFFSET;
         this.protocolVersion = protocolVersion;
         this.actionChecksum = actionChecksum;
-        this.bufferSize = 1000000000;
-        this.byteBuffer = ByteBuffer.allocate(bufferSize);
+        this.bufferSize = 10000000;
+
+        try {
+            File f = new File(Save.getSaveDirectory(worldName, x, z, "log-") + date + "-" + count + ".dat");
+            f.getParentFile().mkdirs();
+            boolean exists = f.exists();
+
+            aFile = new RandomAccessFile(f, "rw");
+            fileChannel = aFile.getChannel();
+            if(exists) {
+                System.out.println("File Exists");
+                ByteBuffer buffer = ByteBuffer.allocate(TIME_HEADER_OFFSET * 16);
+                buffer.mark();
+                fileChannel.read(buffer);
+                buffer.reset();
+                readHeader(buffer);
+            } else {
+                aFile.setLength(bufferSize);
+                writeHeader(fileChannel);
+            }
+            this.byteBuffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, timeHeaderOffset * 16L, fileChannel.size() - timeHeaderOffset * 16L);
+            byteBuffer = byteBuffer.slice(16, byteBuffer.limit() - 16);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        playerTable = new PlayerTable(this);
+        nbtTable = new NBTTable(this);
     }
 
     public Region(Region region, int size, PlayerTable playerTable) {
@@ -126,13 +155,13 @@ public class Region {
         return timeHeaderOffset * 16L + bufferPointer * 16L;
     }
 
-    public void write(Action action, short owner, int x, int y, int z, long time, long data) {
+    public void write(Action action, short owner, int x, int y, int z, long time, long data, boolean hidden) {
         long convertedTime = (time - lastTime) * 20 / 1000;
         if(bufferPointer % timeHeaderOffset == 0 || convertedTime > (1 << 16)) {
             writeTimestamp(time);
             convertedTime = (time - lastTime) * 1000 / 20;
         }
-        write((long)action.getID() << 6 * 8 | ((long)(owner & 0xFFFF) << 4 * 8) | (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL)), (long)((short)convertedTime) << 6 * 8 | data);
+        write((((long)action.getID() << 6 * 8) & ~(1L << 63)) | ((long)(owner & 0xFFFF) << 4 * 8) | (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL)) | (hidden ? 1L << 63 : 0), (long)((short)convertedTime) << 6 * 8 | data);
     }
 
     public void write(long long1, long time, long data) {
@@ -263,6 +292,10 @@ public class Region {
         return playerTable;
     }
 
+    public NBTTable getNBTTable() {
+        return nbtTable;
+    }
+
     public static long calculateTime(short ticks, long time) {
         return time + ticks * 1000 / 20;
     }
@@ -315,7 +348,7 @@ public class Region {
 
         buffer.getShort();
         this.bufferSize = buffer.getInt();
-        buffer.getLong();
+        this.lastTime = buffer.getLong();
         int worldLength = buffer.getShort();
 
         StringBuilder stringBuilder = new StringBuilder(worldLength);
@@ -331,6 +364,7 @@ public class Region {
         this.worldName = stringBuilder.toString();
 
         this.date = Instant.ofEpochMilli(startTime).atZone(ZoneId.of("UTC")).toLocalDate().toString();
+        System.out.println(this);
     }
 
     public void writeHeader(FileChannel fileChannel) throws IOException {
@@ -363,7 +397,7 @@ public class Region {
 
         byteBuffer1.putShort((short)0);
         byteBuffer1.putInt(bufferSize);
-        byteBuffer1.putLong(0);
+        byteBuffer1.putLong(lastTime);
         byteBuffer1.putShort((short) worldName.length());
 
         int ptr = 0;
@@ -383,14 +417,13 @@ public class Region {
 
     public void save() {
         try {
-            File f = new File(Save.getSaveDirectory(worldName, x, z));
+            File f = new File(Save.getSaveDirectory(worldName, x, z, "log-"));
             if(!f.exists()) {
                 if(!f.mkdirs()) {
                     throw new RuntimeException("Failed to create save folder");
                 }
             }
-
-            try(RandomAccessFile aFile = new RandomAccessFile(Save.getSaveDirectory(worldName, x, z) + date + "-" + count + ".dat", "rw")) {
+            try(RandomAccessFile aFile = new RandomAccessFile(Save.getSaveDirectory(worldName, x, z, "log-") + date + "-" + count + ".dat", "rw")) {
                 FileChannel inChannel = aFile.getChannel();
                 writeHeader(inChannel);
                 inChannel.write(byteBuffer);
@@ -398,5 +431,49 @@ public class Region {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void saveHeader() {
+        if(fileChannel != null) {
+            try {
+                writeHeader(fileChannel.position(0));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if(nbtTable != null) {
+            nbtTable.saveHeader();
+        }
+    }
+
+    public void close() {
+        try {
+            if (fileChannel != null) {
+                writeHeader(fileChannel);
+                aFile.close();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "Region{" +
+                "lastTime=" + lastTime +
+                ", bufferPointer=" + bufferPointer +
+                ", bufferSize=" + bufferSize +
+                ", x=" + x +
+                ", z=" + z +
+                ", protocolVersion=" + protocolVersion +
+                ", worldName='" + worldName + '\'' +
+                ", date='" + date + '\'' +
+                ", count=" + count +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
+                ", writing=" + writing +
+                ", actionChecksum=" + actionChecksum +
+                ", timeHeaderOffset=" + timeHeaderOffset +
+                '}';
     }
 }

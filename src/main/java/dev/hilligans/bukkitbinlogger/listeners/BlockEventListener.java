@@ -1,12 +1,12 @@
-package dev.hilligans.bukkitbinlogger;
+package dev.hilligans.bukkitbinlogger.listeners;
 
-import dev.hilligans.binlogger.Database;
 import dev.hilligans.binlogger.User;
+import dev.hilligans.bukkitbinlogger.BukkitBinLogger;
+import dev.hilligans.bukkitbinlogger.BukkitDatabase;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.craftbukkit.v1_19_R3.block.CraftBlock;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -14,7 +14,7 @@ import org.bukkit.event.block.*;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
-public class EventListener implements Listener {
+public class BlockEventListener implements Listener {
 
     static BukkitDatabase database = BukkitBinLogger.database;
 

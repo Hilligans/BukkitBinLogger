@@ -14,7 +14,7 @@ public class Queries {
             if(i % timeHeaderOffset == 0) {
                 continue;
             }
-            if(byteBuffer.getShort(i * 16) == actionID) {
+            if((byteBuffer.getShort(i * 16) & 0x7FFF) == actionID) {
                 data[offset + dataOffset] = i;
                 offset++;
                 limit--;
@@ -59,7 +59,7 @@ public class Queries {
             if(i % timeHeaderOffset == 0) {
                 continue;
             }
-            if(byteBuffer.getInt(i * 16) == val) {
+            if((byteBuffer.getInt(i * 16) & 0x7FFFFFFF) == val) {
                 data[offset + dataOffset] = i;
                 offset++;
                 limit--;
@@ -102,7 +102,7 @@ public class Queries {
 
         int pos = (int) (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL));
         long val = (((long)action & 0xFFFF) << 48) | pos;
-        long mask = ~(0xFFL << 32);
+        long mask = (~(0xFFL << 32)) & (~(1L << 63));
         int offset = 0;
         for(int i = 0; i < bufferPointer; i++) {
             if(i % timeHeaderOffset == 0) {
@@ -157,7 +157,7 @@ public class Queries {
             if(i % timeHeaderOffset == 0) {
                 continue;
             }
-            if((byteBuffer.getLong(i * 16)) == val) {
+            if(((byteBuffer.getLong(i * 16)) & (~(1L << 63))) == val) {
                 data[offset + dataOffset] = i;
                 offset++;
                 limit--;
@@ -228,7 +228,6 @@ public class Queries {
         int bufferPointer = region.getBufferPointer();
         int timeHeaderOffset = region.getTimeHeaderOffset();
 
-        short actionID = action;
         int i = getStartPosition(region, starTime);
         int maxTickTime = 0;
         int offset = 0;
@@ -237,7 +236,7 @@ public class Queries {
                 maxTickTime = calculateTickMaxTimestamp(byteBuffer.getLong(i * 16 + 8), endTime);
                 continue;
             }
-            if(byteBuffer.getShort(i * 16) == actionID) {
+            if((byteBuffer.getShort(i * 16) & 0x7FFF) == action) {
                 if(byteBuffer.getShort(i * 16 + 8) < maxTickTime) {
                     data[offset + dataOffset] = i;
                     offset++;
@@ -293,7 +292,7 @@ public class Queries {
                 maxTickTime = calculateTickMaxTimestamp(byteBuffer.getLong(i * 16 + 8), endTime);
                 continue;
             }
-            if(byteBuffer.getInt(i * 16) == val) {
+            if((byteBuffer.getInt(i * 16) & 0x7FFF) == val) {
                 if(byteBuffer.getShort(i * 16 + 8) < maxTickTime) {
                     data[offset + dataOffset] = i;
                     offset++;
@@ -344,7 +343,7 @@ public class Queries {
 
         int pos = (int) (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL));
         long val = (((long)action & 0xFFFF) << 48) | pos;
-        long mask = ~(0xFFL << 32);
+        long mask = ~(0xFFL << 32) & (~(1L << 63));
 
         int i = getStartPosition(region, starTime);
         int maxTickTime = 0;
@@ -410,12 +409,13 @@ public class Queries {
         int i = getStartPosition(region, starTime);
         int maxTickTime = 0;
         int offset = 0;
+        long mask = (~(1L << 63));
         for(; i < bufferPointer; i++) {
             if(i % timeHeaderOffset == 0) {
                 maxTickTime = calculateTickMaxTimestamp(byteBuffer.getLong(i * 16 + 8), endTime);
                 continue;
             }
-            if((byteBuffer.getLong(i * 16)) == val) {
+            if(((byteBuffer.getLong(i * 16)) & mask) == val) {
                 if(byteBuffer.getShort(i * 16 + 8) < maxTickTime) {
                     data[offset + dataOffset] = i;
                     offset++;
@@ -466,7 +466,7 @@ public class Queries {
             if(i % timeHeaderOffset == 0) {
                 continue;
             }
-            if(byteBuffer.getShort(i * 16) == actionID) {
+            if((byteBuffer.getShort(i * 16) & 0x7FFF) == actionID) {
                 if((byteBuffer.getLong(i * 16 + 8) & dataMask) == dataIn) {
                     data[offset + dataOffset] = i;
                     offset++;
@@ -515,7 +515,7 @@ public class Queries {
             if(i % timeHeaderOffset == 0) {
                 continue;
             }
-            if(byteBuffer.getInt(i * 16) == val) {
+            if((byteBuffer.getInt(i * 16) & 0x7FFFFFFF) == val) {
                 if((byteBuffer.getLong(i * 16 + 8) & dataMask) == dataIn) {
                     data[offset + dataOffset] = i;
                     offset++;
@@ -562,7 +562,7 @@ public class Queries {
 
         int pos = (int) (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL));
         long val = (((long)action & 0xFFFF) << 48) | pos;
-        long mask = ~(0xFFL << 32);
+        long mask = ~(0xFFL << 32) & ~(1L << 63);
         int offset = 0;
         for(int i = 0; i < bufferPointer; i++) {
             if(i % timeHeaderOffset == 0) {
@@ -617,11 +617,12 @@ public class Queries {
         int pos = (int) (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL));
         long val = ((((long)action) & 0xFFFF) << 48) | (((long)user & 0xFFFF) << 32) | pos;
         int offset = 0;
+        long mask = ~(1L << 63);
         for(int i = 0; i < bufferPointer; i++) {
             if(i % timeHeaderOffset == 0) {
                 continue;
             }
-            if((byteBuffer.getLong(i * 16)) == val) {
+            if(((byteBuffer.getLong(i * 16)) & mask) == val) {
                 if((byteBuffer.getLong(i * 16 + 8) & dataMask) == dataIn) {
                     data[offset + dataOffset] = i;
                     offset++;
@@ -666,7 +667,6 @@ public class Queries {
         int bufferPointer = region.getBufferPointer();
         int timeHeaderOffset = region.getTimeHeaderOffset();
 
-        short actionID = action;
         int i = getStartPosition(region, starTime);
         int maxTickTime = 0;
         int offset = 0;
@@ -675,7 +675,7 @@ public class Queries {
                 maxTickTime = calculateTickMaxTimestamp(byteBuffer.getLong(i * 16 + 8), endTime);
                 continue;
             }
-            if(byteBuffer.getShort(i * 16) == actionID) {
+            if((byteBuffer.getShort(i * 16) & 0x7FFF) == action) {
                 long dat = byteBuffer.getLong(i * 16 + 8);
                 if(dat >> 48L < maxTickTime && (dat & dataMask) == dataIn) {
                     data[offset + dataOffset] = i;
@@ -733,7 +733,7 @@ public class Queries {
                 maxTickTime = calculateTickMaxTimestamp(byteBuffer.getLong(i * 16 + 8), endTime);
                 continue;
             }
-            if(byteBuffer.getInt(i * 16) == val) {
+            if((byteBuffer.getInt(i * 16) & 0x7FFFFFFF) == val) {
                 long dat = byteBuffer.getLong(i * 16 + 8);
                 if(dat >> 48L < maxTickTime && (dat & dataMask) == dataIn) {
                     data[offset + dataOffset] = i;
@@ -786,7 +786,7 @@ public class Queries {
 
         int pos = (int) (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL));
         long val = (((long)action & 0xFFFF) << 48) | pos;
-        long mask = ~(0xFFL << 32);
+        long mask = ~(0xFFL << 32) & ~(1L << 63);
 
         int i = getStartPosition(region, starTime);
         int maxTickTime = 0;
@@ -850,7 +850,7 @@ public class Queries {
 
         int pos = (int) (((x & 0x7FFL) << 21) | ((z & 0x7FFL) << 10) | (y & 0x3FFL));
         long val = ((((long)action) & 0xFFFF) << 48) | (((long)user & 0xFFFF) << 32) | pos;
-
+        long mask = ~(1L << 63);
         int i = getStartPosition(region, starTime);
         int maxTickTime = 0;
         int offset = 0;
@@ -859,7 +859,7 @@ public class Queries {
                 maxTickTime = calculateTickMaxTimestamp(byteBuffer.getLong(i * 16 + 8), endTime);
                 continue;
             }
-            if((byteBuffer.getLong(i * 16)) == val) {
+            if((byteBuffer.getLong(i * 16) & mask) == val) {
                 long dat = byteBuffer.getLong(i * 16 + 8);
                 if(dat >> 48L < maxTickTime && (dat & dataMask) == dataIn) {
                     data[offset + dataOffset] = i;

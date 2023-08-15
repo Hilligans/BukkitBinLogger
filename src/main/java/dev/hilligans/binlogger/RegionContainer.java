@@ -1,5 +1,7 @@
 package dev.hilligans.binlogger;
 
+import dev.hilligans.binlogger.util.Tuple;
+
 import java.util.ArrayList;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -33,13 +35,17 @@ public class RegionContainer {
         return region;
     }
 
-    public int query(Query query, int[] data, int dataOffset, int limit) {
+    public int query(Query query, QueryResult queryResult, int[] data, int dataOffset, int limit) {
         int count = 0;
         for(Region region : regions) {
             if(limit - count > 0) {
                 break;
             }
-            count += region.query(query, data, dataOffset + count, limit - count);
+            int added = region.query(query, data, dataOffset + count, limit - count);
+            if(added != 0) {
+                queryResult.regions.add(new Tuple<>( dataOffset + count, region));
+                count += added;
+            }
         }
         return count;
     }
@@ -47,6 +53,12 @@ public class RegionContainer {
     public void save() {
         for(Region region : regions) {
             region.save();
+        }
+    }
+
+    public void saveHeader() {
+        for(Region region : regions) {
+            region.saveHeader();
         }
     }
 }

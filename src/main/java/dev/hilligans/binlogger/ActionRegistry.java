@@ -57,9 +57,12 @@ public class ActionRegistry {
         registerAction(Action.IGNITE);
         registerAction(Action.SHEAR);
         registerAction(Action.TAKE);
+        registerAction(Action.ADD);
         registerAction(Action.DECAY);
         registerAction(Action.INTERACT);
         registerAction(Action.TELEPORT);
         registerAction(Action.MODIFY_SIGN);
+        registerAction(Action.BULK_TAKE);
+        registerAction(Action.BULK_ADD);
     }
 }
