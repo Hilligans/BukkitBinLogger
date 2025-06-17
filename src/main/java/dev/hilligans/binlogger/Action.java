@@ -11,7 +11,6 @@ import java.util.function.BiFunction;
 public abstract class Action {
 
 
-
     public static final Action NOOP = new EmptyAction("NOOP", "BinaryLogger", "", "", null);
     public static final Action TIME_HEADER = new EmptyAction("TIME_HEADER", "BinaryLogger", "", "", null);
     public static final Action BREAK = new BlockAction("BREAK", "BinaryLogger", "-", "broke", Database.BLOCK_PARSER);
@@ -102,5 +101,13 @@ public abstract class Action {
         public <T> T getRollback(Database.DatabaseEntry databaseEntry, Class<T> tClass) {
             return null;
         }
+    }
+
+    @Override
+    public String toString() {
+        return "Action{" +
+                "actionName='" + actionName + '\'' +
+                ", index=" + index +
+                '}';
     }
 }

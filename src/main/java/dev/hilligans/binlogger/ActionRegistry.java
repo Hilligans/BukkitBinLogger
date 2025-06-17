@@ -122,5 +122,9 @@ public class ActionRegistry {
         registerAction(Action.MODIFY_SIGN);
         registerAction(Action.BULK_TAKE);
         registerAction(Action.BULK_ADD);
+
+        for(Action action : actions) {
+            System.out.println(action);
+        }
     }
 }
