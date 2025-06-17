@@ -8,8 +8,9 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.Iterator;
 
-public class Region {
+public class Region implements Iterable<Integer> {
 
     long lastTime = 0;
 
@@ -37,6 +38,8 @@ public class Region {
 
     public int timeHeaderOffset;
 
+    public boolean loaded = false;
+
 
     public static final int TIME_HEADER_OFFSET = 64;
     public static final int REGION_WIDTH = 1 << 11;
@@ -53,31 +56,11 @@ public class Region {
         this.actionChecksum = actionChecksum;
         this.bufferSize = 10000000;
 
-        try {
-            File f = new File(Save.getSaveDirectory(worldName, x, z, "log-") + date + "-" + count + ".dat");
-            f.getParentFile().mkdirs();
-            boolean exists = f.exists();
+        load();
+    }
 
-            aFile = new RandomAccessFile(f, "rw");
-            fileChannel = aFile.getChannel();
-            if(exists) {
-                System.out.println("File Exists");
-                ByteBuffer buffer = ByteBuffer.allocate(TIME_HEADER_OFFSET * 16);
-                buffer.mark();
-                fileChannel.read(buffer);
-                buffer.reset();
-                readHeader(buffer);
-            } else {
-                aFile.setLength(bufferSize);
-                writeHeader(fileChannel);
-            }
-            this.byteBuffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, timeHeaderOffset * 16L, fileChannel.size() - timeHeaderOffset * 16L);
-            byteBuffer = byteBuffer.slice(16, byteBuffer.limit() - 16);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        playerTable = new PlayerTable(this);
-        nbtTable = new NBTTable(this);
+    public Region(String filePath) {
+
     }
 
     public Region(Region region, int size, PlayerTable playerTable) {
@@ -116,16 +99,33 @@ public class Region {
         }
     }
 
-    public static Region createRegion(File file) throws IOException {
-        try(RandomAccessFile aFile = new RandomAccessFile(file, "rw")) {
-            int length = (int) aFile.length();
-            ByteBuffer buf = ByteBuffer.allocate(length);
-            buf.mark();
-            aFile.getChannel().read(buf);
-            buf.reset();
-            aFile.close();
-            return new Region(buf);
+    public void load() {
+        try {
+            File f = new File(Save.getSaveDirectory(worldName, x, z, "log-") + date + "-" + count + ".dat");
+            f.getParentFile().mkdirs();
+            boolean exists = f.exists();
+
+            aFile = new RandomAccessFile(f, "rw");
+            fileChannel = aFile.getChannel();
+            if(exists) {
+                System.out.println("File Exists");
+                ByteBuffer buffer = ByteBuffer.allocate(TIME_HEADER_OFFSET * 16);
+                buffer.mark();
+                fileChannel.read(buffer);
+                buffer.reset();
+                readHeader(buffer);
+            } else {
+                aFile.setLength(bufferSize);
+                writeHeader(fileChannel);
+            }
+            this.byteBuffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, timeHeaderOffset * 16L, fileChannel.size() - timeHeaderOffset * 16L);
+            byteBuffer = byteBuffer.slice(16, byteBuffer.limit() - 16);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
+        playerTable = new PlayerTable(this);
+        nbtTable = new NBTTable(this);
+        loaded = true;
     }
 
     public static Region createMappedRegion(File file) {
@@ -313,6 +313,14 @@ public class Region {
         return new Database.DatabaseEntry(this, getTimestamp(index), byteBuffer.getLong(index * 16), byteBuffer.getLong(index * 16 + 8));
     }
 
+    public void convertAction(int[] conversionTable) {
+        for (int val : this) {
+            short header = (byteBuffer.getShort(val));
+            short newHeader = (short) (conversionTable[(header & ~(1 << 15))] | (header & (1 << 15)));
+            byteBuffer.putShort(val, newHeader);
+        }
+    }
+
     public void writeTimestamp(long time) {
         this.lastTime = time;
         bufferPointer += bufferPointer % timeHeaderOffset == 0 ? 0 : timeHeaderOffset - bufferPointer % timeHeaderOffset;
@@ -455,6 +463,28 @@ public class Region {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public Iterator<Integer> iterator() {
+        return new Iterator<>() {
+
+            int pos = 0;
+
+            @Override
+            public boolean hasNext() {
+                return pos < bufferPointer;
+            }
+
+            @Override
+            public Integer next() {
+                int val = pos;
+                pos++;
+                if(pos % timeHeaderOffset == 0) {
+                    pos++;
+                }
+                return val * 16;
+            }
+        };
     }
 
     @Override

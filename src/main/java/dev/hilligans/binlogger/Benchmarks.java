@@ -4,6 +4,7 @@ import dev.hilligans.binlogger.Action;
 import dev.hilligans.binlogger.Queries;
 import dev.hilligans.binlogger.Region;
 import dev.hilligans.binlogger.User;
+import org.checkerframework.checker.units.qual.A;
 
 import java.io.File;
 import java.time.Instant;
@@ -15,24 +16,32 @@ public class Benchmarks {
         System.out.println(Instant.now().atZone(ZoneId.of("UTC")).toLocalDate().toString());
         System.out.println((short) (1 | 0b11 << 14));
         System.out.println(Integer.toBinaryString(Short.toUnsignedInt((short) (1 | 0b11 << 14))));
+        ActionRegistry registry = new ActionRegistry();
+        registry.registerDefaultActions();
         Region region = new Region(0, 0, "world", 0, 0);
         Random random = new Random();
         long s = System.currentTimeMillis();
         for(int x = 0; x < 1000; x++) {
             long t = System.currentTimeMillis();
             for(int i = 0; i < 100; i++) {
-                region.write(Action.BREAK, User.WATER.getID(), random.nextInt(2048), 0, random.nextInt(2048), t, 10, false);
+                region.write(Action.BREAK, User.WATER.getID(), random.nextInt(2048), 0, random.nextInt(2048), t, 0, true);
             }
         }
-        //region.save();
-        int[] vals = new int[1000000];
+
+        ActionRegistry newRegistry = new ActionRegistry();
+        newRegistry.registerAction(new Action.EmptyAction("NOOP", "BinaryLogger", "", "", null));
+        newRegistry.registerAction(new Action.EmptyAction("TIME_HEADER", "BinaryLogger", "", "", null));
+        newRegistry.registerAction(new Action.EmptyAction("BREAK", "BinaryLogger", "", "", null));
+
+
+        //int[] vals = new int[1000000];
 
 
         //Region region1 = Region.createMappedRegion(new File("binlogger/worlds/world/" + 0 + "_" + 0 + "/2023-06-10-0.dat"));
-        long time = benchmark(region, vals);
+        //long time = benchmark(region, vals);
         //long time1 = benchmark(region1, vals);
-        long time1 = benchmark1(region, vals);
-        System.out.println("Time for first " + time + " time for second " + time1);
+        //long time1 = benchmark1(region, vals);
+        //System.out.println("Time for first " + time + " time for second " + time1);
 
 
     }

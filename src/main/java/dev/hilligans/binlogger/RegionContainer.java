@@ -2,6 +2,7 @@ package dev.hilligans.binlogger;
 
 import dev.hilligans.binlogger.util.Tuple;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -59,6 +60,31 @@ public class RegionContainer {
     public void saveHeader() {
         for(Region region : regions) {
             region.saveHeader();
+        }
+    }
+
+    public void readHeader() {
+
+    }
+
+    public void rebuildHeader() {
+        File folder = new File(Save.getSaveDirectory(worldName, x, z, ""));
+        ArrayList<String> names = new ArrayList<>();
+        out:
+        {
+            if (folder.isDirectory()) {
+                File[] files = folder.listFiles();
+                if (files == null) {
+                    break out;
+                }
+                for (File f : files) {
+                    if (f.getName().startsWith("log-")) {
+                        names.add(f.getName());
+                    }
+                }
+            } else {
+                throw new RuntimeException("");
+            }
         }
     }
 }
